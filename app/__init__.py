@@ -1,0 +1,1 @@
+"""Nara Home MCP package."""

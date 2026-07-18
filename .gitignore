@@ -1,0 +1,52 @@
+# Environment and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*credentials*.json
+*token*
+.tunnel.env
+tunnel-profile/
+.cloudflared/
+
+# Private configuration
+config/entities.yaml
+!config/entities.example.yaml
+OPERACION_FINAL.md
+PRIVATE_NOTES.md
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Logs, backups, and archives
+*.log
+logs/
+backups/
+backup/
+*.bak
+*.tmp
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+*.7z
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+

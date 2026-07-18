@@ -1,0 +1,159 @@
+from __future__ import annotations
+
+import logging
+import subprocess
+from datetime import datetime, timezone
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
+from pathlib import Path
+from typing import AsyncIterator
+
+from mcp.server.fastmcp import FastMCP
+from mcp.server.auth.settings import AuthSettings
+from mcp.server.transport_security import TransportSecuritySettings
+from mcp.shared.auth import OAuthMetadata
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response
+
+from .config import EntitiesConfig, Settings, load_entities_config
+from .ha_client import HomeAssistantClient, HomeAssistantError
+from .security import is_sensitive_domain
+from .tools import register_tools
+
+
+@dataclass
+class AppContext:
+    settings: Settings
+    entities: EntitiesConfig
+    ha_client: HomeAssistantClient
+
+
+def _resolve_entities_path(path: Path) -> Path:
+    return path if path.is_absolute() else Path.cwd() / path
+
+
+def _detect_git_commit() -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    commit = result.stdout.strip()
+    return commit or None
+
+
+def _build_oauth_authorization_metadata(settings: Settings) -> OAuthMetadata:
+    issuer = settings.resolved_oauth_issuer_url.rstrip("/")
+    scopes_supported = settings.oauth_required_scopes_list or None
+    return OAuthMetadata(
+        issuer=issuer,
+        authorization_endpoint=f"{issuer}/authorize",
+        token_endpoint=f"{issuer}/token",
+        scopes_supported=scopes_supported,
+        response_types_supported=["code"],
+        grant_types_supported=["authorization_code", "refresh_token"],
+        token_endpoint_auth_methods_supported=["client_secret_post", "client_secret_basic"],
+        code_challenge_methods_supported=["S256"],
+    )
+
+
+async def _expand_raw_entity_allowlist(
+    ha_client: HomeAssistantClient,
+    entities: EntitiesConfig,
+    *,
+    enabled: bool = False,
+) -> None:
+    if not enabled:
+        return
+
+    current_allowed = set(entities.allowed_raw_entities)
+    try:
+        for state in await ha_client.list_states():
+            entity_id = state.get("entity_id")
+            if not isinstance(entity_id, str) or is_sensitive_domain(entity_id):
+                continue
+            current_allowed.add(entity_id.strip())
+    except HomeAssistantError as exc:
+        logging.getLogger(__name__).warning("Could not expand HA allowlist at startup: %s", exc)
+        return
+    entities.allowed_raw_entities = sorted(current_allowed)
+
+
+def main() -> None:
+    settings = Settings()
+    logging.basicConfig(
+        level=getattr(logging, settings.log_level.upper(), logging.INFO),
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
+    entities = load_entities_config(_resolve_entities_path(settings.entities_file))
+
+    ha_client = HomeAssistantClient(
+        base_url=settings.ha_url,
+        token=settings.ha_token,
+        timeout_seconds=settings.request_timeout_seconds,
+    )
+
+    @asynccontextmanager
+    async def lifespan(_: FastMCP) -> AsyncIterator[AppContext]:
+        try:
+            await _expand_raw_entity_allowlist(
+                ha_client,
+                entities,
+                enabled=settings.allow_dynamic_entities,
+            )
+            yield AppContext(settings=settings, entities=entities, ha_client=ha_client)
+        finally:
+            await ha_client.aclose()
+
+    transport_security = None
+    if settings.allowed_hosts_list or settings.allowed_origins_list:
+        transport_security = TransportSecuritySettings(
+            enable_dns_rebinding_protection=True,
+            allowed_hosts=settings.allowed_hosts_list,
+            allowed_origins=settings.allowed_origins_list,
+        )
+
+    mcp = FastMCP(
+        name=settings.mcp_server_name,
+        instructions=(
+            "Safe Home Assistant MCP server for read-only sensor queries and "
+            "limited light or scene control through a strict allowlist."
+        ),
+        stateless_http=True,
+        json_response=True,
+        lifespan=lifespan,
+        transport_security=transport_security,
+    )
+    mcp.settings.host = settings.mcp_host
+    mcp.settings.port = settings.mcp_port
+    mcp.settings.streamable_http_path = "/mcp"
+    if settings.oauth_metadata_enabled:
+        mcp.settings.auth = AuthSettings(
+            issuer_url=settings.resolved_oauth_issuer_url,
+            resource_server_url=settings.resolved_oauth_resource_server_url,
+            required_scopes=settings.oauth_required_scopes_list or None,
+        )
+
+        @mcp.custom_route("/.well-known/oauth-authorization-server", methods=["GET"])
+        async def oauth_authorization_server_metadata(_: Request) -> Response:
+            metadata = _build_oauth_authorization_metadata(settings)
+            return JSONResponse(metadata.model_dump(mode="json", exclude_none=True))
+
+    started_at = datetime.now(timezone.utc)
+    git_commit = _detect_git_commit()
+    register_tools(mcp, ha_client, entities, started_at=started_at, git_commit=git_commit)
+    registered_tool_names = [tool.name for tool in mcp._tool_manager.list_tools()]
+    logging.getLogger(__name__).info(
+        "Registered MCP tools (%d): %s",
+        len(registered_tool_names),
+        ", ".join(sorted(registered_tool_names)),
+    )
+    mcp.run(transport="streamable-http")
+
+
+if __name__ == "__main__":
+    main()

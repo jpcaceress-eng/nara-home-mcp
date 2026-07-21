@@ -21,6 +21,7 @@ def test_registered_tool_inventory_includes_infra_tools() -> None:
     assert names == [
         "ha_get_battery_summary",
         "ha_get_climate_summary",
+        "ha_get_entity_history",
         "ha_get_home_health_summary",
         "ha_get_infra_summary",
         "ha_get_nas_summary",

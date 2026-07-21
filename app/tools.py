@@ -22,6 +22,7 @@ from .policy import (
     resolve_room_temperature_entity,
     resolve_scene,
 )
+from .mcp_tools import register_history_tool
 
 
 def brightness_pct_to_ha(brightness_pct: int) -> int:
@@ -483,3 +484,5 @@ def register_tools(
             "ups": dict(entities.ups),
             "allowed_raw_entities": list(entities.allowed_raw_entities),
         }
+
+    register_history_tool(mcp, ha, entities)

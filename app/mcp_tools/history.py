@@ -34,7 +34,10 @@ def register_recent_changes_tool(
     ha: HomeAssistantClient,
     entities: EntitiesConfig,
 ) -> None:
-    service = RecentChangesService(EntityHistoryService(EntityHistoryRepository(ha)))
+    service = RecentChangesService(
+        EntityHistoryService(EntityHistoryRepository(ha)),
+        entities.recent_changes,
+    )
 
     @mcp.tool()
     async def ha_get_recent_changes(hours: int = 12) -> dict[str, Any]:

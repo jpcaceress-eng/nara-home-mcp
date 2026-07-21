@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+from typing import Annotated
+
 from pydantic import BaseModel, ConfigDict, Field
+
+NonNegativeFloat = Annotated[float, Field(ge=0, allow_inf_nan=False)]
 
 
 class RoomConfig(BaseModel):
@@ -25,6 +29,17 @@ class ClimateRoomConfig(BaseModel):
     battery: str | None = None
 
 
+class RecentChangesConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+
+    numeric_delta_default: NonNegativeFloat = 0
+    debounce_seconds: int = Field(default=0, ge=0)
+    max_results: int = Field(default=0, ge=0)
+    numeric_delta_by_entity: dict[str, NonNegativeFloat] = Field(default_factory=dict)
+    numeric_delta_by_unit: dict[str, NonNegativeFloat] = Field(default_factory=dict)
+    unordered_entities: list[str] = Field(default_factory=list)
+
+
 class EntitiesConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -37,3 +52,4 @@ class EntitiesConfig(BaseModel):
     infra: dict[str, dict[str, str]] = Field(default_factory=dict)
     ups: dict[str, str | None] = Field(default_factory=dict)
     allowed_raw_entities: list[str] = Field(default_factory=list)
+    recent_changes: RecentChangesConfig = Field(default_factory=RecentChangesConfig)

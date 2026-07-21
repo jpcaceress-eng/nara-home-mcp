@@ -80,3 +80,18 @@ allowed_raw_entities:
   - sensor.example_ups_output_voltage
   - sensor.example_ups_last_transfer
 
+# Optional filtering used only by ha_get_recent_changes. Omitting this section
+# keeps numeric/debounce filtering and result truncation disabled.
+recent_changes:
+  numeric_delta_default: 0
+  debounce_seconds: 0
+  max_results: 200
+  numeric_delta_by_entity:
+    sensor.example_room_humidity: 1.0
+    sensor.example_storage_server_volume_used: 0.1
+  numeric_delta_by_unit:
+    "°C": 0.3
+    "%": 1.0
+    "V": 1.0
+  unordered_entities:
+    - sensor.example_unordered_collection

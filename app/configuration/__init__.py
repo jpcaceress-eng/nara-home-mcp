@@ -4,6 +4,7 @@ from .models import (
     ClimateRoomConfig,
     DisplayConfig,
     EntitiesConfig,
+    RecentChangesConfig,
     RoomConfig,
     SwitchableEntity,
 )
@@ -13,6 +14,7 @@ __all__ = [
     "ClimateRoomConfig",
     "DisplayConfig",
     "EntitiesConfig",
+    "RecentChangesConfig",
     "RoomConfig",
     "Settings",
     "SwitchableEntity",

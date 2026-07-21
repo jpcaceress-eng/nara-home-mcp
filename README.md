@@ -24,6 +24,8 @@ Nara Home MCP currently exposes 18 tools.
 - `ha_get_temperature` reads the temperature for a configured room or climate location.
 - `ha_get_overnight_temperature` summarizes minimum, maximum, and average temperature between 23:00 and 08:00.
 - `ha_get_presence` summarizes configured presence sensors.
+- `ha_get_entity_history` returns bounded history for one explicitly allowed entity.
+- `ha_get_recent_changes` combines recent transitions from all explicitly allowed entities and can filter sensor noise.
 
 ### Climate and home health
 
@@ -93,6 +95,29 @@ The main environment settings are:
 - `ALLOWED_HOSTS` and `ALLOWED_ORIGINS`: optional transport-security restrictions.
 
 Use `.env.example` as the environment template and `config/entities.example.yaml` as the entity-map template. The example values are fictional and are safe to replace locally. Do not commit the resulting `.env` or `config/entities.yaml` files.
+
+### Recent-change filtering
+
+The optional `recent_changes` section in `entities.yaml` affects only `ha_get_recent_changes`; it does not change `ha_get_entity_history`. It never adds entities to the allowlist. Rules that name an entity outside `allowed_raw_entities` cannot cause that entity to be queried or returned.
+
+Filters run in this order: reordered collections, numeric thresholds, fixed-window debounce, newest-first sorting, and optional result truncation.
+
+Numeric thresholds use this priority: `numeric_delta_by_entity`, then `numeric_delta_by_unit`, then `numeric_delta_default`. Unit keys must exactly match Home Assistant's `unit_of_measurement`; a missing or empty unit falls back to `numeric_delta_default`. A transition is discarded when its absolute delta is strictly less than the threshold. A delta exactly equal to the threshold is significant and is retained.
+
+`debounce_seconds` defines a fixed window measured from the first transition in each per-entity group. The group retains the first `old_value` and last `new_value`. It is discarded if those values are textually equal or represent exactly equal finite numbers, such as `40` and `40.0`. Different entities are never grouped together.
+
+Entities listed explicitly in `unordered_entities` accept either JSON lists or comma-separated values. Their elements are compared without order while preserving duplicates, so `["a", "a", "b"]` differs from `["a", "b", "b"]`. If either value cannot be parsed, the transition is retained.
+
+`max_results` is disabled by default with `0`; a positive value keeps only that many newest filtered results. The response metadata has the following meaning:
+
+- `changes_before_filtering`: transitions before collection, threshold, and debounce filters.
+- `discarded_as_reordered_collection`, `discarded_by_threshold`, and `discarded_by_debounce`: mutually exclusive removal counts from those sequential filters.
+- `changes_after_filtering`: transitions remaining before `max_results` is applied.
+- `changes_found`: transitions actually returned.
+- `truncated`: whether `max_results` removed any transitions.
+- `truncated_count`: number removed by `max_results`.
+
+Consequently, `changes_before_filtering` minus the three discard counters equals `changes_after_filtering`, and `changes_after_filtering - truncated_count` equals `changes_found`.
 
 ## Run the server
 

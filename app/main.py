@@ -15,9 +15,9 @@ from mcp.shared.auth import OAuthMetadata
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-from .config import EntitiesConfig, Settings, load_entities_config
-from .ha_client import HomeAssistantClient, HomeAssistantError
-from .security import is_sensitive_domain
+from .clients import HomeAssistantClient, HomeAssistantError
+from .configuration import EntitiesConfig, Settings, load_entities_config
+from .policy import is_sensitive_domain
 from .tools import register_tools
 
 

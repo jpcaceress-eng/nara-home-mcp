@@ -1,14 +1,13 @@
-"""Backward-compatible imports for configuration APIs."""
+"""Configuration models and loading helpers."""
 
-from .configuration import (
+from .models import (
     ClimateRoomConfig,
     DisplayConfig,
     EntitiesConfig,
     RoomConfig,
-    Settings,
     SwitchableEntity,
-    load_entities_config,
 )
+from .settings import Settings, load_entities_config
 
 __all__ = [
     "ClimateRoomConfig",

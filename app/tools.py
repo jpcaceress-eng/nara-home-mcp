@@ -10,9 +10,9 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 
-from .config import EntitiesConfig
-from .ha_client import HomeAssistantClient, HomeAssistantError
-from .security import (
+from .clients import HomeAssistantClient, HomeAssistantError
+from .configuration import EntitiesConfig
+from .policy import (
     NaraSecurityError,
     ensure_allowed_raw_entity,
     resolve_display,

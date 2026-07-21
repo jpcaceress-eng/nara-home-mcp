@@ -1,6 +1,6 @@
-"""Backward-compatible imports for entity security policy."""
+"""Authorization and entity-resolution policy."""
 
-from .policy import (
+from .entities import (
     NaraSecurityError,
     ResolvedEntity,
     SENSITIVE_DOMAINS,

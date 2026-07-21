@@ -9,7 +9,7 @@ from ..clients import HomeAssistantClient, HomeAssistantError
 from ..configuration import EntitiesConfig
 from ..policy import NaraSecurityError, ensure_allowed_raw_entity
 from ..repositories import EntityHistoryRepository
-from ..services import EntityHistoryService
+from ..services import EntityHistoryService, RecentChangesService
 
 
 def register_history_tool(
@@ -25,5 +25,25 @@ def register_history_tool(
         try:
             safe_entity_id = ensure_allowed_raw_entity(entities, entity_id)
             return await service.get_entity_history(safe_entity_id, hours)
+        except (NaraSecurityError, HomeAssistantError, ValueError) as exc:
+            raise ToolError(str(exc)) from exc
+
+
+def register_recent_changes_tool(
+    mcp: FastMCP,
+    ha: HomeAssistantClient,
+    entities: EntitiesConfig,
+) -> None:
+    service = RecentChangesService(EntityHistoryService(EntityHistoryRepository(ha)))
+
+    @mcp.tool()
+    async def ha_get_recent_changes(hours: int = 12) -> dict[str, Any]:
+        """Return recent state transitions across all explicitly allowlisted entities."""
+        try:
+            safe_entity_ids = [
+                ensure_allowed_raw_entity(entities, entity_id)
+                for entity_id in dict.fromkeys(entities.allowed_raw_entities)
+            ]
+            return await service.get_recent_changes(safe_entity_ids, hours)
         except (NaraSecurityError, HomeAssistantError, ValueError) as exc:
             raise ToolError(str(exc)) from exc

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -14,6 +15,13 @@ def validate_history_hours(hours: int) -> None:
     if hours < 1 or hours > MAX_HISTORY_HOURS:
         raise ValueError(f"hours must be between 1 and {MAX_HISTORY_HOURS}")
 
+
+@dataclass(frozen=True)
+class EntityHistoryResult:
+    payload: dict[str, Any]
+    friendly_name: str | None
+
+
 class EntityHistoryService:
     """Normalize bounded Home Assistant history into a stable public shape."""
 
@@ -27,6 +35,16 @@ class EntityHistoryService:
         *,
         end_time: datetime | None = None,
     ) -> dict[str, Any]:
+        result = await self.get_entity_history_result(entity_id, hours, end_time=end_time)
+        return result.payload
+
+    async def get_entity_history_result(
+        self,
+        entity_id: str,
+        hours: int,
+        *,
+        end_time: datetime | None = None,
+    ) -> EntityHistoryResult:
         validate_history_hours(hours)
 
         period_end = end_time or datetime.now(timezone.utc)
@@ -50,7 +68,8 @@ class EntityHistoryService:
 
         attributes = current.get("attributes")
         unit = attributes.get("unit_of_measurement") if isinstance(attributes, dict) else None
-        return {
+        friendly_name = attributes.get("friendly_name") if isinstance(attributes, dict) else None
+        payload = {
             "entity_id": entity_id,
             "period": {
                 "hours": hours,
@@ -66,6 +85,7 @@ class EntityHistoryService:
             "change_count": len(changes),
             "changes": changes,
         }
+        return EntityHistoryResult(payload=payload, friendly_name=friendly_name)
 
 
 def _extract_points(raw_history: Any) -> tuple[list[dict[str, Any]], bool]:

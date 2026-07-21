@@ -28,6 +28,7 @@ def test_registered_tool_inventory_includes_infra_tools() -> None:
         "ha_get_overnight_temperature",
         "ha_get_presence",
         "ha_get_proxmox_summary",
+        "ha_get_recent_changes",
         "ha_get_server_version",
         "ha_get_state",
         "ha_get_temperature",

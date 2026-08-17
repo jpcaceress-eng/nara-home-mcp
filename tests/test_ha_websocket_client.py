@@ -263,6 +263,9 @@ async def test_disallowed_command_is_rejected_before_connection_or_send() -> Non
         "config_entries/get",
         "get_services",
         "get_states",
+        "recorder/get_statistics_metadata",
+        "recorder/list_statistic_ids",
+        "recorder/statistics_during_period",
         "trace/get",
         "trace/list",
     }

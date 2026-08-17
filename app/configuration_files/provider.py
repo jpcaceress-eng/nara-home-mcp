@@ -52,7 +52,9 @@ class HomeAssistantConfigProvider:
         enabled: bool = True,
     ) -> None:
         self._root = root
-        self._require_cifs = require_cifs
+        # ``require_cifs`` is retained as a compatibility name. The security
+        # property is an actual read-only mount, independent of filesystem type.
+        self._require_read_only_mount = require_cifs
         self._enabled = enabled
 
     @property
@@ -70,7 +72,7 @@ class HomeAssistantConfigProvider:
             or storage.is_symlink()
         ):
             return False
-        return not self._require_cifs or self._is_read_only_cifs_mount()
+        return not self._require_read_only_mount or self._is_read_only_mount()
 
     def yaml_files(self) -> tuple[ConfigFile, ...]:
         self._require_root()
@@ -218,8 +220,8 @@ class HomeAssistantConfigProvider:
             return "/" not in storage_name
         return pure.suffix.casefold() in TEXT_SUFFIXES
 
-    def _is_read_only_cifs_mount(self) -> bool:
-        """Require the configured root to be a read-only CIFS mount."""
+    def _is_read_only_mount(self) -> bool:
+        """Require the configured root to be its own read-only mount."""
         try:
             mount_lines = Path("/proc/self/mountinfo").read_text(encoding="utf-8").splitlines()
         except OSError:
@@ -235,6 +237,6 @@ class HomeAssistantConfigProvider:
                 continue
             mount_point = fields[4].replace("\\040", " ")
             mount_options = set(fields[5].split(","))
-            if mount_point == target and filesystem[0] == "cifs" and "ro" in mount_options:
+            if mount_point == target and "ro" in mount_options:
                 return True
         return False

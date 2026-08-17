@@ -192,7 +192,7 @@ def test_empty_incomplete_or_non_cifs_root_fails_closed(tmp_path: Path) -> None:
         production_policy.yaml_files()
 
 
-def test_production_policy_requires_exact_read_only_cifs_mount(
+def test_production_policy_requires_exact_read_only_mount(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _tree(tmp_path)
@@ -200,7 +200,7 @@ def test_production_policy_requires_exact_read_only_cifs_mount(
 
     def mountinfo(path: Path, *args: object, **kwargs: object) -> str:
         if path == Path("/proc/self/mountinfo"):
-            return f"42 31 0:52 / {tmp_path} ro,nosuid,nodev,noexec - cifs //server.example.invalid/config ro\n"
+            return f"42 31 0:52 / {tmp_path} ro,nosuid,nodev,noexec - ext4 /dev/example ro\n"
         return original(path, *args, **kwargs)
 
     monkeypatch.setattr(Path, "read_text", mountinfo)
@@ -208,7 +208,7 @@ def test_production_policy_requires_exact_read_only_cifs_mount(
 
     def writable_mountinfo(path: Path, *args: object, **kwargs: object) -> str:
         if path == Path("/proc/self/mountinfo"):
-            return f"42 31 0:52 / {tmp_path} rw,nosuid,nodev,noexec - cifs //server.example.invalid/config rw\n"
+            return f"42 31 0:52 / {tmp_path} rw,nosuid,nodev,noexec - ext4 /dev/example rw\n"
         return original(path, *args, **kwargs)
 
     monkeypatch.setattr(Path, "read_text", writable_mountinfo)

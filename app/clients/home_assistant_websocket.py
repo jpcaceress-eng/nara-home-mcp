@@ -92,6 +92,7 @@ class HomeAssistantWebSocketClient:
         *,
         authentication_timeout_seconds: float | None = None,
         max_message_bytes: int = DEFAULT_MAX_MESSAGE_BYTES,
+        websocket_url: str | None = None,
         connect_factory: _ConnectFactory | None = None,
     ) -> None:
         if timeout_seconds <= 0:
@@ -101,7 +102,7 @@ class HomeAssistantWebSocketClient:
         if max_message_bytes <= 0:
             raise ValueError("max_message_bytes must be greater than zero")
 
-        self._url = _websocket_url(base_url)
+        self._url = _explicit_websocket_url(websocket_url) if websocket_url else _websocket_url(base_url)
         self._token = token
         self._request_timeout = timeout_seconds
         self._authentication_timeout = authentication_timeout_seconds or timeout_seconds
@@ -400,3 +401,10 @@ def _websocket_url(base_url: str) -> str:
     if scheme is None or not parsed.netloc:
         raise ValueError("Home Assistant URL must use http or https")
     return urlunsplit((scheme, parsed.netloc, "/api/websocket", "", ""))
+
+
+def _explicit_websocket_url(websocket_url: str) -> str:
+    parsed = urlsplit(websocket_url)
+    if parsed.scheme.lower() not in {"ws", "wss"} or not parsed.netloc:
+        raise ValueError("Home Assistant WebSocket URL must use ws or wss")
+    return urlunsplit((parsed.scheme.lower(), parsed.netloc, parsed.path or "/", "", ""))

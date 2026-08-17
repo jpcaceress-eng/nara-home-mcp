@@ -20,6 +20,7 @@ class Settings(BaseSettings):
 
     ha_url: str = Field(alias="HA_URL")
     ha_token: str = Field(alias="HA_TOKEN")
+    ha_websocket_url: str | None = Field(default=None, alias="HA_WEBSOCKET_URL")
     mcp_server_name: str = Field(default="Nara Home MCP", alias="MCP_SERVER_NAME")
     mcp_host: str = Field(default="127.0.0.1", alias="MCP_HOST")
     mcp_port: int = Field(default=8000, alias="MCP_PORT")

@@ -86,6 +86,15 @@ def _build_oauth_authorization_metadata(settings: Settings) -> OAuthMetadata:
     )
 
 
+def _register_health_route(mcp: FastMCP) -> None:
+    @mcp.custom_route("/health", methods=["GET"])
+    async def health(_: Request) -> Response:
+        return JSONResponse(
+            {"status": "ok", "write_capability": False},
+            headers={"Cache-Control": "no-store"},
+        )
+
+
 async def _expand_raw_entity_allowlist(
     ha_client: HomeAssistantClient,
     entities: EntitiesConfig,
@@ -126,6 +135,7 @@ def main() -> None:
         base_url=settings.ha_url,
         token=settings.ha_token,
         timeout_seconds=settings.request_timeout_seconds,
+        websocket_url=settings.ha_websocket_url,
     )
     inventory_store = InventoryStore(
         InventoryCollector(
@@ -133,6 +143,7 @@ def main() -> None:
                 base_url=settings.ha_url,
                 token=settings.ha_token,
                 timeout_seconds=settings.request_timeout_seconds,
+                websocket_url=settings.ha_websocket_url,
             )
         ),
         InventoryNormalizer(),
@@ -188,6 +199,8 @@ def main() -> None:
     mcp.settings.host = settings.mcp_host
     mcp.settings.port = settings.mcp_port
     mcp.settings.streamable_http_path = "/mcp"
+
+    _register_health_route(mcp)
     if settings.oauth_metadata_enabled:
         mcp.settings.auth = AuthSettings(
             issuer_url=settings.resolved_oauth_issuer_url,

@@ -3,6 +3,7 @@ name: Nara Home
 version: "0.4.6"
 slug: nara_home
 description: Read-only MCP access to Home Assistant operational data
+image: ghcr.io/jpcaceress-eng/nara-home-mcp
 arch:
   - amd64
   - aarch64

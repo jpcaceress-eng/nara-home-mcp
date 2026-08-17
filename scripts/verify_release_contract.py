@@ -61,11 +61,16 @@ def validate_versions(requested: str | None = None) -> None:
     assert f"## {version} " in changelog
     if requested is not None:
         assert requested == version, f"release {requested} does not match project {version}"
+        assert config.get("image") == EXPECTED_IMAGE, (
+            "release publishing is disabled until config.yaml references the "
+            "published image"
+        )
 
 
 def validate_read_only_contract() -> None:
     config = load_yaml(APP / "config.yaml")
-    assert config["image"] == EXPECTED_IMAGE == remote_image()
+    assert config["stage"] == "experimental"
+    assert "image" not in config
     assert config["arch"] == ["amd64", "aarch64"]
     assert config["ports"] == {"8000/tcp": None}
     assert config["homeassistant_api"] is True

@@ -30,6 +30,8 @@ def test_repository_and_app_metadata_are_minimal_and_protected() -> None:
     config = yaml.safe_load((APP / "config.yaml").read_text(encoding="utf-8"))
 
     assert repository == {"name": "Nara Home Apps"}
+    assert config["stage"] == "experimental"
+    assert "image" not in config
     assert config["arch"] == ["amd64", "aarch64"]
     assert config["host_network"] is False
     assert config["homeassistant_api"] is True

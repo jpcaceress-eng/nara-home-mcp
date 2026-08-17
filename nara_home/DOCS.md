@@ -5,6 +5,16 @@ App skeleton supports `amd64` and `aarch64` and intentionally has no ingress,
 host-network access, host port, Docker API, devices, privileged capabilities,
 Supervisor API access, OAuth, tunnel, or remote publication.
 
+## Experimental beta installation
+
+This App is currently experimental. During the beta, Home Assistant OS builds
+it locally from the included Dockerfile, so the first installation takes longer
+than installing a prebuilt image. The GHCR image reference will be added only
+after the App has been validated on a real, clean Home Assistant OS system.
+
+Do not run the Release workflow while `config.yaml` does not reference the
+published image.
+
 ## Configuration
 
 - **Log level** controls App log verbosity.

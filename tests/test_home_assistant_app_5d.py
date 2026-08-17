@@ -4,6 +4,7 @@ import asyncio
 import json
 import runpy
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import httpx
@@ -81,7 +82,8 @@ def test_dockerfile_is_pinned_nonroot_and_runtime_only() -> None:
     assert 'io.hass.version="${BUILD_VERSION}"' in dockerfile
     assert 'io.hass.type="app"' in dockerfile
     assert 'io.hass.arch="${BUILD_ARCH}"' in dockerfile
-    assert "USER nara" in dockerfile
+    assert "USER root" in dockerfile
+    assert "drop_privileges()" in (APP / "run.sh").read_text(encoding="utf-8")
     assert "--only-binary=:all:" in dockerfile
     assert "python3-venv" in dockerfile
     assert "HEALTHCHECK" in dockerfile
@@ -135,6 +137,23 @@ def test_launcher_fails_closed_without_supervisor_token(tmp_path: Path) -> None:
     options.write_text("{}", encoding="utf-8")
     with pytest.raises(RuntimeError, match="SUPERVISOR_TOKEN is required"):
         load_launcher()["build_environment"](options, {})
+
+
+def test_launcher_drops_root_privileges_before_runtime(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[str, object]] = []
+    monkeypatch.setattr("os.geteuid", lambda: 0)
+    monkeypatch.setattr("os.setgroups", lambda groups: calls.append(("groups", groups)))
+    monkeypatch.setattr("os.setgid", lambda gid: calls.append(("gid", gid)))
+    monkeypatch.setattr("os.setuid", lambda uid: calls.append(("uid", uid)))
+    monkeypatch.setattr(
+        "pwd.getpwnam", lambda user: SimpleNamespace(pw_uid=999, pw_gid=999)
+    )
+
+    load_launcher()["drop_privileges"]()
+
+    assert calls == [("groups", []), ("gid", 999), ("uid", 999)]
 
 
 @pytest.mark.asyncio

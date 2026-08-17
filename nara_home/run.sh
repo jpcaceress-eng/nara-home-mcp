@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import pwd
 import sys
 from pathlib import Path
 from typing import Mapping
@@ -14,6 +15,7 @@ REST_PROXY_URL = "http://supervisor/core"
 WEBSOCKET_PROXY_URL = "ws://supervisor/core/websocket"
 CONFIG_ROOT = "/homeassistant_config"
 ALLOWED_LOG_LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR"}
+RUNTIME_USER = "nara"
 
 
 def build_environment(
@@ -54,12 +56,23 @@ def build_environment(
     return environment
 
 
+def drop_privileges(user: str = RUNTIME_USER) -> None:
+    """Permanently become the unprivileged runtime account."""
+    if os.geteuid() != 0:
+        return
+    account = pwd.getpwnam(user)
+    os.setgroups([])
+    os.setgid(account.pw_gid)
+    os.setuid(account.pw_uid)
+
+
 def main() -> None:
     try:
         environment = build_environment(OPTIONS_PATH, os.environ)
     except RuntimeError as exc:
         print(f"Nara Home startup error: {exc}", file=sys.stderr)
         raise SystemExit(1) from None
+    drop_privileges()
     os.execvpe("nara-home-mcp", ["nara-home-mcp"], environment)
 
 

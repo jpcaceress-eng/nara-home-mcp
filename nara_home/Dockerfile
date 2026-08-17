@@ -37,7 +37,9 @@ ENV HOME=/tmp \
     HA_CONFIG_REQUIRE_READ_ONLY_MOUNT=true \
     ALLOW_DYNAMIC_ENTITIES=false
 
-USER nara
+# Supervisor owns /data/options.json. The launcher starts as root only long
+# enough to read it, then permanently drops to the nara account before MCP.
+USER root
 
 EXPOSE 8000
 

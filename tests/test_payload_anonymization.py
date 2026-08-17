@@ -12,10 +12,8 @@ from app.devtools import (
     AnonymizationLimits,
     CaptureAnonymizer,
     CaptureAuditError,
-    audit_serialized_capture,
-)
-from scripts.capture_automation_diagnostics import (
     CaptureOperationError,
+    audit_serialized_capture,
     capture_automation_diagnostics,
     list_automations,
 )

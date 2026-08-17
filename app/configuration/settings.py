@@ -25,7 +25,27 @@ class Settings(BaseSettings):
     mcp_port: int = Field(default=8000, alias="MCP_PORT")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     entities_file: Path = Field(default=Path("config/entities.yaml"), alias="ENTITIES_FILE")
+    config_read_enabled: bool = Field(default=False, alias="HA_CONFIG_READ_ENABLED")
+    config_root: Path | None = Field(default=None, alias="HA_CONFIG_ROOT")
+    config_require_read_only_mount: bool = Field(
+        default=True, alias="HA_CONFIG_REQUIRE_READ_ONLY_MOUNT"
+    )
     request_timeout_seconds: float = Field(default=5.0, alias="REQUEST_TIMEOUT_SECONDS")
+    inventory_refresh_interval_seconds: float = Field(
+        default=300.0, gt=0, alias="INVENTORY_REFRESH_INTERVAL_SECONDS"
+    )
+    inventory_refresh_timeout_seconds: float = Field(
+        default=30.0, gt=0, alias="INVENTORY_REFRESH_TIMEOUT_SECONDS"
+    )
+    inventory_retry_base_seconds: float = Field(
+        default=5.0, gt=0, alias="INVENTORY_RETRY_BASE_SECONDS"
+    )
+    inventory_retry_max_seconds: float = Field(
+        default=60.0, gt=0, alias="INVENTORY_RETRY_MAX_SECONDS"
+    )
+    inventory_retry_jitter_ratio: float = Field(
+        default=0.2, ge=0, le=1, alias="INVENTORY_RETRY_JITTER_RATIO"
+    )
     allow_dynamic_entities: bool = Field(default=False, alias="ALLOW_DYNAMIC_ENTITIES")
     allowed_hosts: str = Field(default="", alias="ALLOWED_HOSTS")
     allowed_origins: str = Field(default="", alias="ALLOWED_ORIGINS")

@@ -10,19 +10,26 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 
-from .clients import HomeAssistantClient, HomeAssistantError
+from .clients import HomeAssistantClient, HomeAssistantError, HomeAssistantWebSocketClient
 from .configuration import EntitiesConfig
 from .policy import (
     NaraSecurityError,
     ensure_allowed_raw_entity,
-    resolve_display,
     resolve_climate_temperature_entity,
-    resolve_light_name,
     resolve_presence_entities,
     resolve_room_temperature_entity,
-    resolve_scene,
 )
-from .mcp_tools import register_history_tool, register_recent_changes_tool
+from .mcp_tools import (
+    register_automation_diagnostics_tools,
+    register_configuration_file_tools,
+    register_inventory_tools,
+    register_operational_data_tools,
+)
+from .repositories import AutomationDiagnosticsRepository
+from .services import AutomationDiagnosticsService
+from .inventory import InventoryScheduler, InventoryStore
+from .inventory.service import InventoryService
+from .configuration_files import HomeAssistantConfigProvider, HomeAssistantConfigService
 
 
 def brightness_pct_to_ha(brightness_pct: int) -> int:
@@ -164,14 +171,23 @@ def register_tools(
     *,
     started_at: datetime | None = None,
     git_commit: str | None = None,
+    automation_websocket: HomeAssistantWebSocketClient | None = None,
+    inventory_store: InventoryStore | None = None,
+    inventory_scheduler: InventoryScheduler | None = None,
+    ha_config_provider: HomeAssistantConfigProvider | None = None,
 ) -> None:
     @mcp.tool()
     async def ha_get_state(entity_id: str) -> dict[str, Any]:
-        """Return the raw state for an explicitly allowlisted entity."""
+        """Return the complete live state and all attributes for any HA entity."""
         try:
-            safe_entity_id = ensure_allowed_raw_entity(entities, entity_id)
-            return await ha.get_state(safe_entity_id)
-        except (NaraSecurityError, HomeAssistantError) as exc:
+            from .mcp_tools.operational_data import _entity_id, _sanitize
+            safe_entity_id = _entity_id(entity_id)
+            return _sanitize(await ha.get_state(safe_entity_id))
+        except HomeAssistantError as exc:
+            if "404" in str(exc):
+                return {"entity_id": entity_id.strip().lower(), "availability": "not_available", "write_capability": False}
+            raise ToolError(str(exc)) from exc
+        except ValueError as exc:
             raise ToolError(str(exc)) from exc
 
     @mcp.tool()
@@ -322,6 +338,7 @@ def register_tools(
             "started_at": _serialize_started_at(started_at),
             "tool_count": len(tools),
             "tools": tools,
+            "write_capability": False,
         }
 
     @mcp.tool()
@@ -395,82 +412,6 @@ def register_tools(
             raise ToolError(str(exc)) from exc
 
     @mcp.tool()
-    async def ha_turn_on(name: str) -> dict[str, Any]:
-        """Turn on an allowlisted light only."""
-        try:
-            resolved = resolve_light_name(entities, name)
-            result = await ha.call_service("light", "turn_on", resolved.entity_id)
-            return {"action": "turn_on", "target": resolved.alias, "entity_id": resolved.entity_id, "result": result}
-        except (NaraSecurityError, HomeAssistantError) as exc:
-            raise ToolError(str(exc)) from exc
-
-    @mcp.tool()
-    async def ha_turn_off(name: str) -> dict[str, Any]:
-        """Turn off an allowlisted light only."""
-        try:
-            resolved = resolve_light_name(entities, name)
-            result = await ha.call_service("light", "turn_off", resolved.entity_id)
-            return {"action": "turn_off", "target": resolved.alias, "entity_id": resolved.entity_id, "result": result}
-        except (NaraSecurityError, HomeAssistantError) as exc:
-            raise ToolError(str(exc)) from exc
-
-    @mcp.tool()
-    async def ha_set_light_brightness(name: str, brightness_pct: int) -> dict[str, Any]:
-        """Set brightness for an allowlisted light between 1 and 100 percent."""
-        try:
-            resolved = resolve_light_name(entities, name)
-            brightness = brightness_pct_to_ha(brightness_pct)
-            result = await ha.call_service(
-                "light",
-                "turn_on",
-                resolved.entity_id,
-                {"brightness": brightness},
-            )
-            return {
-                "action": "set_brightness",
-                "target": resolved.alias,
-                "entity_id": resolved.entity_id,
-                "brightness_pct": brightness_pct,
-                "brightness": brightness,
-                "result": result,
-            }
-        except (NaraSecurityError, HomeAssistantError) as exc:
-            raise ToolError(str(exc)) from exc
-
-    @mcp.tool()
-    async def ha_run_scene(scene_name: str) -> dict[str, Any]:
-        """Activate an allowlisted scene."""
-        try:
-            resolved = resolve_scene(entities, scene_name)
-            result = await ha.call_service("scene", "turn_on", resolved.entity_id)
-            return {"action": "run_scene", "target": resolved.alias, "entity_id": resolved.entity_id, "result": result}
-        except (NaraSecurityError, HomeAssistantError) as exc:
-            raise ToolError(str(exc)) from exc
-
-    @mcp.tool()
-    async def ha_set_display_brightness(name: str, brightness_pct: int) -> dict[str, Any]:
-        """Set brightness on an allowlisted display entity through light.turn_on."""
-        try:
-            resolved = resolve_display(entities, name)
-            brightness = brightness_pct_to_ha(brightness_pct)
-            result = await ha.call_service(
-                "light",
-                "turn_on",
-                resolved.entity_id,
-                {"brightness": brightness},
-            )
-            return {
-                "action": "set_display_brightness",
-                "target": resolved.alias,
-                "entity_id": resolved.entity_id,
-                "brightness_pct": brightness_pct,
-                "brightness": brightness,
-                "result": result,
-            }
-        except (NaraSecurityError, HomeAssistantError) as exc:
-            raise ToolError(str(exc)) from exc
-
-    @mcp.tool()
     def ha_list_allowed_entities() -> dict[str, Any]:
         """List room aliases and the full allowlist exposed by this MCP server."""
         return {
@@ -485,5 +426,19 @@ def register_tools(
             "allowed_raw_entities": list(entities.allowed_raw_entities),
         }
 
-    register_history_tool(mcp, ha, entities)
-    register_recent_changes_tool(mcp, ha, entities)
+    register_operational_data_tools(mcp, ha, automation_websocket)
+    if inventory_store is not None:
+        register_inventory_tools(mcp, InventoryService(inventory_store, inventory_scheduler))
+        if ha_config_provider is not None:
+            register_configuration_file_tools(
+                mcp, HomeAssistantConfigService(ha_config_provider, inventory_store)
+            )
+    if automation_websocket is not None:
+        repository = AutomationDiagnosticsRepository(ha, automation_websocket)
+        register_automation_diagnostics_tools(
+            mcp,
+            AutomationDiagnosticsService(
+                repository,
+                editable_automations=set(entities.editable_automations),
+            ),
+        )

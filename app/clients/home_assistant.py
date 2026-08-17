@@ -48,6 +48,12 @@ class HomeAssistantClient:
             raise HomeAssistantError("Unexpected Home Assistant states response")
         return response
 
+    async def list_services(self) -> list[dict[str, Any]]:
+        response = await self._request("GET", "/api/services")
+        if not isinstance(response, list):
+            raise HomeAssistantError("Unexpected Home Assistant services response")
+        return response
+
     async def get_history_period(
         self,
         start_time: datetime,
@@ -57,10 +63,13 @@ class HomeAssistantClient:
         minimal_response: bool = True,
         no_attributes: bool = True,
     ) -> Any:
-        params: dict[str, Any] = {
-            "minimal_response": str(minimal_response).lower(),
-            "no_attributes": str(no_attributes).lower(),
-        }
+        params: dict[str, Any] = {}
+        # Home Assistant models these as presence flags: including a parameter
+        # can enable it regardless of a textual "false" value.
+        if minimal_response:
+            params["minimal_response"] = "true"
+        if no_attributes:
+            params["no_attributes"] = "true"
         if end_time is not None:
             params["end_time"] = end_time.isoformat()
         if filter_entity_id:
@@ -68,20 +77,19 @@ class HomeAssistantClient:
         response = await self._request("GET", f"/api/history/period/{start_time.isoformat()}", params=params)
         return response
 
-    async def call_service(
+    async def get_logbook_period(
         self,
-        domain: str,
-        service: str,
-        entity_id: str,
-        service_data: dict[str, Any] | None = None,
-    ) -> list[dict[str, Any]] | dict[str, Any]:
-        payload: dict[str, Any] = {"entity_id": entity_id}
-        if service_data:
-            payload.update(service_data)
-        response = await self._request("POST", f"/api/services/{domain}/{service}", json=payload)
-        if not isinstance(response, (list, dict)):
-            raise HomeAssistantError("Unexpected Home Assistant service response")
-        return response
+        start_time: datetime,
+        end_time: datetime,
+        *,
+        entity_id: str | None = None,
+    ) -> Any:
+        params: dict[str, Any] = {"end_time": end_time.isoformat()}
+        if entity_id:
+            params["entity"] = entity_id
+        return await self._request(
+            "GET", f"/api/logbook/{start_time.isoformat()}", params=params
+        )
 
     async def healthcheck(self) -> dict[str, Any]:
         response = await self._request("GET", "/api/")
@@ -90,6 +98,8 @@ class HomeAssistantClient:
         return response
 
     async def _request(self, method: str, path: str, **kwargs: Any) -> Any:
+        if method != "GET":
+            raise HomeAssistantError("Only read-only Home Assistant requests are supported")
         async for attempt in AsyncRetrying(
             stop=stop_after_attempt(3),
             wait=wait_fixed(1),
@@ -99,20 +109,8 @@ class HomeAssistantClient:
             with attempt:
                 response = await self._ensure_client().request(method, path, **kwargs)
                 if response.status_code >= 400:
-                    detail = _extract_error_detail(response)
-                    raise HomeAssistantError(f"Home Assistant {response.status_code}: {detail}")
+                    raise HomeAssistantError(
+                        f"Home Assistant request failed with status {response.status_code}"
+                    )
                 return response.json() if response.content else {}
         raise HomeAssistantError("Unreachable retry state")
-
-
-def _extract_error_detail(response: httpx.Response) -> str:
-    try:
-        payload = response.json()
-    except ValueError:
-        return response.text.strip() or "unknown error"
-
-    if isinstance(payload, dict):
-        message = payload.get("message") or payload.get("error")
-        if message:
-            return str(message)
-    return str(payload)

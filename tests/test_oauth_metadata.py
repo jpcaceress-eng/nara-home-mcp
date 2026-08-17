@@ -6,7 +6,7 @@ from app.main import _build_oauth_authorization_metadata
 
 def _make_settings(**overrides: object) -> Settings:
     values = dict(
-        ha_url="http://ha.local:8123",
+        ha_url="https://home-assistant.example.invalid:8123",
         ha_token="test-token",
         mcp_host="127.0.0.1",
         mcp_port=8000,

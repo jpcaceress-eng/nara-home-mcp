@@ -1,97 +1,42 @@
+# Optional aliases and favorites. These entries never restrict read access.
 rooms:
-  sample_room:
-    temperature: sensor.example_room_temperature
-    presence: binary_sensor.example_room_presence
+  example_office:
+    temperature: sensor.example_office_temperature
+    presence: binary_sensor.example_office_presence
 
 climate:
-  sample_room:
-    temperature: sensor.example_room_temperature
-    humidity: sensor.example_room_humidity
-    battery: sensor.example_room_sensor_battery
+  example_outdoor:
+    temperature: sensor.example_outdoor_temperature
+    humidity: sensor.example_outdoor_humidity
+    battery: sensor.example_outdoor_sensor_battery
 
 batteries:
-  sample_room_sensor: sensor.example_room_sensor_battery
+  example_outdoor_sensor: sensor.example_outdoor_sensor_battery
 
-lights:
-  sample_lamp:
-    entity_id: light.example_lamp
-    friendly_name: Example lamp
-    aliases:
-      - demo lamp
-      - reading lamp
+lights: {}
+displays: {}
+scenes: {}
+infra: {}
+ups: {}
 
-displays:
-  sample_display:
-    brightness_entity: light.example_display
-    friendly_name: Example display
-
-scenes:
-  sample_scene:
-    entity_id: scene.example_scene
-    friendly_name: Example scene
-
-infra:
-  proxmox:
-    status: binary_sensor.example_virtualization_host_status
-    cpu: sensor.example_virtualization_host_cpu
-    ram: sensor.example_virtualization_host_memory
-    storage: sensor.example_virtualization_host_storage
-
-  nas:
-    status: binary_sensor.example_storage_server_status
-    cpu: sensor.example_storage_server_cpu
-    ram: sensor.example_storage_server_memory
-    temperature: sensor.example_storage_server_temperature
-    volume_used: sensor.example_storage_server_volume_used
-    backup_status: sensor.example_backup_status
-
-ups:
-  status: sensor.example_ups_status
-  battery_charge: sensor.example_ups_battery_charge
-  load: sensor.example_ups_load
-  runtime: sensor.example_ups_runtime
-  input_voltage: sensor.example_ups_input_voltage
-  output_voltage: sensor.example_ups_output_voltage
-  last_transfer: sensor.example_ups_last_transfer
-
+# Retained for compatibility and favorites only. General state and history
+# tools dynamically accept every valid Home Assistant entity ID.
 allowed_raw_entities:
-  - sensor.example_room_temperature
-  - binary_sensor.example_room_presence
-  - sensor.example_room_humidity
-  - sensor.example_room_sensor_battery
-  - light.example_lamp
-  - light.example_display
-  - scene.example_scene
-  - binary_sensor.example_virtualization_host_status
-  - sensor.example_virtualization_host_cpu
-  - sensor.example_virtualization_host_memory
-  - sensor.example_virtualization_host_storage
-  - binary_sensor.example_storage_server_status
-  - sensor.example_storage_server_cpu
-  - sensor.example_storage_server_memory
-  - sensor.example_storage_server_temperature
-  - sensor.example_storage_server_volume_used
-  - sensor.example_backup_status
-  - sensor.example_ups_status
-  - sensor.example_ups_battery_charge
-  - sensor.example_ups_load
-  - sensor.example_ups_runtime
-  - sensor.example_ups_input_voltage
-  - sensor.example_ups_output_voltage
-  - sensor.example_ups_last_transfer
+  - sensor.example_office_temperature
+  - binary_sensor.example_office_presence
+  - sensor.example_outdoor_temperature
+  - sensor.example_outdoor_humidity
+  - sensor.example_outdoor_sensor_battery
 
-# Optional filtering used only by ha_get_recent_changes. Omitting this section
-# keeps numeric/debounce filtering and result truncation disabled.
+# Proposal generation is read-only and disabled unless explicitly configured.
+editable_automations: []
+
 recent_changes:
   numeric_delta_default: 0
   debounce_seconds: 0
   max_results: 200
-  numeric_delta_by_entity:
-    sensor.example_room_humidity: 1.0
-    sensor.example_storage_server_volume_used: 0.1
+  numeric_delta_by_entity: {}
   numeric_delta_by_unit:
     "°C": 0.3
     "%": 1.0
-    "V": 1.0
-  unordered_entities:
-    - sensor.example_unordered_collection
+  unordered_entities: []

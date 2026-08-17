@@ -5,6 +5,10 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field
 
 NonNegativeFloat = Annotated[float, Field(ge=0, allow_inf_nan=False)]
+AutomationEntityId = Annotated[
+    str,
+    Field(pattern=r"^automation\.[a-z0-9_]+$", max_length=200),
+]
 
 
 class RoomConfig(BaseModel):
@@ -52,4 +56,5 @@ class EntitiesConfig(BaseModel):
     infra: dict[str, dict[str, str]] = Field(default_factory=dict)
     ups: dict[str, str | None] = Field(default_factory=dict)
     allowed_raw_entities: list[str] = Field(default_factory=list)
+    editable_automations: list[AutomationEntityId] = Field(default_factory=list)
     recent_changes: RecentChangesConfig = Field(default_factory=RecentChangesConfig)

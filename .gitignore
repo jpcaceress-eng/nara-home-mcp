@@ -18,6 +18,18 @@ config/entities.yaml
 !config/entities.example.yaml
 OPERACION_FINAL.md
 PRIVATE_NOTES.md
+NARA_HOME_*_CONTEXT.md
+*_CONTEXT_PRIVATE.md
+
+# Local operational probes and deployment artifacts
+deployment/
+scripts/capture_automation_diagnostics.py
+scripts/check_installed_manifest.py
+scripts/generate_runtime_manifest.py
+scripts/probe_4b*.py
+scripts/verify_4b_deployment_config.py
+scripts/verify_runtime_manifest.py
+tests/test_deployment_config_verification.py
 
 # Python
 __pycache__/
@@ -27,13 +39,19 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .coverage
+.coverage.*
 htmlcov/
 .venv/
 venv/
+*.egg-info/
+.eggs/
+dist/
+build/
 
 # Logs, backups, and archives
 *.log
 logs/
+.local/automation-diagnostics/
 backups/
 backup/
 *.bak
@@ -43,10 +61,17 @@ backup/
 *.tgz
 *.zip
 *.7z
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*.sqlite3-*
+*.journal
+.storage/
 
 # Editors and operating systems
 .idea/
 .vscode/
 .DS_Store
 Thumbs.db
-

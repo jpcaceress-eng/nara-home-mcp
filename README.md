@@ -70,6 +70,8 @@ Optional configuration reads:
 
 The systemd file under `systemd/` is a template. Render its user, group, and installation-directory placeholders for the target host. Home Assistant App and Docker packaging are intentionally outside this snapshot.
 
+See [the distribution matrix](docs/distribution-matrix.md) for the supported Home Assistant targets and the private ChatGPT connection decision for Phase 5C.
+
 ## Development
 
 Runtime and development dependencies are separated in `pyproject.toml`. Install the development extra and run focused tests with `pytest`. The repository intentionally keeps the existing Git history, but only the current branch tip describes the public read-only product.

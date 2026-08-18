@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import json
 import os
-import pwd
 import sys
 from pathlib import Path
 from typing import Mapping
@@ -15,7 +14,8 @@ REST_PROXY_URL = "http://supervisor/core"
 WEBSOCKET_PROXY_URL = "ws://supervisor/core/websocket"
 CONFIG_ROOT = "/homeassistant_config"
 ALLOWED_LOG_LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR"}
-RUNTIME_USER = "nara"
+RUNTIME_UID = 999
+RUNTIME_GID = 999
 
 
 def build_environment(
@@ -56,26 +56,20 @@ def build_environment(
     return environment
 
 
-def drop_privileges(user: str = RUNTIME_USER) -> None:
-    """Permanently become, or confirm, the unprivileged runtime account."""
-    account = pwd.getpwnam(user)
+def validate_runtime_identity() -> None:
+    """Fail closed unless Docker started the process as the runtime account."""
     current_uid = os.geteuid()
     current_gid = os.getegid()
     current_groups = os.getgroups()
 
-    if current_uid == account.pw_uid and current_gid == account.pw_gid:
+    if current_uid == RUNTIME_UID and current_gid == RUNTIME_GID:
         return
 
-    if current_uid != 0:
-        raise RuntimeError(
-            "Refusing to start with unexpected runtime identity "
-            f"uid={current_uid} gid={current_gid} groups={current_groups}; "
-            f"expected root or {account.pw_uid}:{account.pw_gid}"
-        )
-
-    os.setgroups([])
-    os.setgid(account.pw_gid)
-    os.setuid(account.pw_uid)
+    raise RuntimeError(
+        "Refusing to start with unexpected runtime identity "
+        f"uid={current_uid} gid={current_gid} groups={current_groups}; "
+        f"expected {RUNTIME_UID}:{RUNTIME_GID}"
+    )
 
 
 def main() -> None:
@@ -85,7 +79,7 @@ def main() -> None:
         print(f"Nara Home startup error: {exc}", file=sys.stderr)
         raise SystemExit(1) from None
     try:
-        drop_privileges()
+        validate_runtime_identity()
     except RuntimeError as exc:
         print(f"Nara Home startup error: {exc}", file=sys.stderr)
         raise SystemExit(1) from None

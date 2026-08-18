@@ -4,7 +4,6 @@ import asyncio
 import json
 import runpy
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any
 
 import httpx
@@ -39,6 +38,7 @@ def test_repository_and_app_metadata_are_minimal_and_protected() -> None:
     assert config["docker_api"] is False
     assert config["full_access"] is False
     assert config["apparmor"] is True
+    assert config["init"] is False
     assert config["ports"] == {"8000/tcp": None}
     assert config["watchdog"] == "http://[HOST]:[PORT:8000]/health"
     assert config["map"] == [
@@ -84,8 +84,12 @@ def test_dockerfile_is_pinned_nonroot_and_runtime_only() -> None:
     assert 'io.hass.version="${BUILD_VERSION}"' in dockerfile
     assert 'io.hass.type="app"' in dockerfile
     assert 'io.hass.arch="${BUILD_ARCH}"' in dockerfile
-    assert "USER root" in dockerfile
-    assert "drop_privileges()" in (APP / "run.sh").read_text(encoding="utf-8")
+    assert "USER 999:999" in dockerfile
+    launcher = (APP / "run.sh").read_text(encoding="utf-8")
+    assert "validate_runtime_identity()" in launcher
+    assert "os.setgroups" not in launcher
+    assert "os.setgid" not in launcher
+    assert "os.setuid" not in launcher
     assert "--only-binary=:all:" in dockerfile
     assert "python3-venv" in dockerfile
     assert "groupadd --system --gid 999 nara" in dockerfile
@@ -155,63 +159,45 @@ def test_launcher_fails_closed_without_supervisor_token(tmp_path: Path) -> None:
         load_launcher()["build_environment"](options, {})
 
 
-def test_launcher_drops_root_privileges_before_runtime(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    calls: list[tuple[str, object]] = []
-    monkeypatch.setattr("os.geteuid", lambda: 0)
-    monkeypatch.setattr("os.getegid", lambda: 0)
-    monkeypatch.setattr("os.getgroups", lambda: [0])
-    monkeypatch.setattr("os.setgroups", lambda groups: calls.append(("groups", groups)))
-    monkeypatch.setattr("os.setgid", lambda gid: calls.append(("gid", gid)))
-    monkeypatch.setattr("os.setuid", lambda uid: calls.append(("uid", uid)))
-    monkeypatch.setattr(
-        "pwd.getpwnam", lambda user: SimpleNamespace(pw_uid=999, pw_gid=999)
-    )
-
-    load_launcher()["drop_privileges"]()
-
-    assert calls == [("groups", []), ("gid", 999), ("uid", 999)]
-
-
 def test_launcher_accepts_target_identity_without_privileged_calls(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[tuple[str, object]] = []
     monkeypatch.setattr("os.geteuid", lambda: 999)
     monkeypatch.setattr("os.getegid", lambda: 999)
-    monkeypatch.setattr("os.getgroups", lambda: [999, 123])
+    monkeypatch.setattr("os.getgroups", lambda: [999])
     monkeypatch.setattr("os.setgroups", lambda groups: calls.append(("groups", groups)))
     monkeypatch.setattr("os.setgid", lambda gid: calls.append(("gid", gid)))
     monkeypatch.setattr("os.setuid", lambda uid: calls.append(("uid", uid)))
-    monkeypatch.setattr(
-        "pwd.getpwnam", lambda user: SimpleNamespace(pw_uid=999, pw_gid=999)
-    )
 
-    load_launcher()["drop_privileges"]()
+    load_launcher()["validate_runtime_identity"]()
 
     assert calls == []
 
 
-def test_launcher_rejects_unexpected_nonroot_identity(
+@pytest.mark.parametrize(
+    ("uid", "gid", "groups"),
+    [(0, 0, [0]), (1000, 1000, [1000, 44])],
+)
+def test_launcher_rejects_unexpected_identity_without_privileged_calls(
     monkeypatch: pytest.MonkeyPatch,
+    uid: int,
+    gid: int,
+    groups: list[int],
 ) -> None:
     calls: list[tuple[str, object]] = []
-    monkeypatch.setattr("os.geteuid", lambda: 1000)
-    monkeypatch.setattr("os.getegid", lambda: 1000)
-    monkeypatch.setattr("os.getgroups", lambda: [1000, 44])
+    monkeypatch.setattr("os.geteuid", lambda: uid)
+    monkeypatch.setattr("os.getegid", lambda: gid)
+    monkeypatch.setattr("os.getgroups", lambda: groups)
     monkeypatch.setattr("os.setgroups", lambda groups: calls.append(("groups", groups)))
     monkeypatch.setattr("os.setgid", lambda gid: calls.append(("gid", gid)))
     monkeypatch.setattr("os.setuid", lambda uid: calls.append(("uid", uid)))
-    monkeypatch.setattr(
-        "pwd.getpwnam", lambda user: SimpleNamespace(pw_uid=999, pw_gid=999)
-    )
 
     with pytest.raises(
         RuntimeError,
-        match=r"unexpected runtime identity uid=1000 gid=1000 groups=\[1000, 44\]",
+        match=rf"unexpected runtime identity uid={uid} gid={gid}",
     ):
-        load_launcher()["drop_privileges"]()
+        load_launcher()["validate_runtime_identity"]()
 
     assert calls == []
 

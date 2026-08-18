@@ -1,6 +1,6 @@
 FROM ghcr.io/home-assistant/base-debian:trixie
 
-ARG BUILD_VERSION="0.4.8"
+ARG BUILD_VERSION="0.4.9"
 ARG BUILD_ARCH="amd64"
 
 LABEL \
@@ -9,7 +9,7 @@ LABEL \
     io.hass.arch="${BUILD_ARCH}"
 
 COPY constraints.txt /tmp/constraints.txt
-COPY nara_home_mcp-0.4.8-py3-none-any.whl /tmp/nara_home_mcp-0.4.8-py3-none-any.whl
+COPY nara_home_mcp-0.4.9-py3-none-any.whl /tmp/nara_home_mcp-0.4.9-py3-none-any.whl
 
 RUN apt-get update \
     && apt-get install --no-install-recommends -y ca-certificates python3 python3-venv \
@@ -18,7 +18,7 @@ RUN apt-get update \
         --no-cache-dir \
         --only-binary=:all: \
         --constraint /tmp/constraints.txt \
-        /tmp/nara_home_mcp-0.4.8-py3-none-any.whl \
+        /tmp/nara_home_mcp-0.4.9-py3-none-any.whl \
     && groupadd --system --gid 999 nara \
     && useradd --system --uid 999 --gid 999 --no-create-home --home-dir /nonexistent nara \
     && find /opt/nara -type d -exec chmod 0555 {} + \
@@ -26,7 +26,7 @@ RUN apt-get update \
     && find /opt/nara/bin -type f -exec chmod 0555 {} + \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
-    && rm -f /tmp/constraints.txt /tmp/nara_home_mcp-0.4.8-py3-none-any.whl
+    && rm -f /tmp/constraints.txt /tmp/nara_home_mcp-0.4.9-py3-none-any.whl
 
 COPY --chmod=0555 run.sh /usr/local/bin/nara-home-launcher
 COPY --chmod=0444 entities.yaml /usr/local/share/nara-home-entities.yaml
@@ -40,9 +40,9 @@ ENV HOME=/tmp \
     HA_CONFIG_REQUIRE_READ_ONLY_MOUNT=true \
     ALLOW_DYNAMIC_ENTITIES=false
 
-# Supervisor owns /data/options.json. The launcher starts as root only long
-# enough to read it, then permanently drops to the nara account before MCP.
-USER root
+# HAOS protected Apps do not grant runtime SETUID/SETGID capabilities. Start
+# directly as the fixed unprivileged account and fail closed in the launcher.
+USER 999:999
 
 EXPOSE 8000
 

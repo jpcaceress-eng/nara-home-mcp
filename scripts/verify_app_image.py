@@ -94,7 +94,7 @@ def main() -> None:
 
         try:
             readable = docker(
-                "run", "--rm", "--user", "999:999", "--cap-drop", "ALL",
+                "run", "--rm", "--cap-drop", "ALL",
                 "--read-only",
                 "--entrypoint", "/opt/nara/bin/python", args.image,
                 "-c", "from pathlib import Path; Path('/opt/nara/pyvenv.cfg').read_text()",
@@ -103,7 +103,7 @@ def main() -> None:
 
             docker(
                 "run", "--detach", "--name", name,
-                "--user", "999:999", "--cap-drop", "ALL", "--read-only",
+                "--cap-drop", "ALL", "--read-only",
                 "--tmpfs", "/tmp:rw,noexec,nosuid,size=16m",
                 "--mount", f"type=bind,src={options},dst=/data/options.json,readonly",
                 "--env", f"SUPERVISOR_TOKEN={private_token}",

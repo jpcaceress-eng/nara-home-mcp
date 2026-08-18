@@ -74,6 +74,7 @@ def validate_read_only_contract() -> None:
     assert config["arch"] == ["amd64", "aarch64"]
     assert config["ports"] == {"8000/tcp": None}
     assert config["homeassistant_api"] is True
+    assert config["init"] is False
     for key in ("host_network", "hassio_api", "docker_api", "full_access"):
         assert config[key] is False
     assert config["map"] == [
@@ -83,7 +84,10 @@ def validate_read_only_contract() -> None:
     assert "deny /homeassistant_config/** wklx," in profile
     assert "complain" not in profile
     dockerfile = (APP / "Dockerfile").read_text(encoding="utf-8")
-    assert "drop_privileges()" in (APP / "run.sh").read_text(encoding="utf-8")
+    launcher = (APP / "run.sh").read_text(encoding="utf-8")
+    assert "validate_runtime_identity()" in launcher
+    assert "os.setgroups" not in launcher
+    assert "USER 999:999" in dockerfile
     assert "HEALTHCHECK" in dockerfile
 
 

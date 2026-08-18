@@ -1,6 +1,6 @@
 # https://developers.home-assistant.io/docs/apps/configuration/
 name: Nara Home
-version: "0.4.7"
+version: "0.4.8"
 slug: nara_home
 description: Read-only MCP access to Home Assistant operational data
 stage: experimental

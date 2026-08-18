@@ -99,6 +99,12 @@ def test_dockerfile_is_pinned_nonroot_and_runtime_only() -> None:
     assert "COPY . " not in dockerfile
     assert "pytest" not in (APP / "constraints.txt").read_text(encoding="utf-8").lower()
 
+    image_regression = (ROOT / "scripts" / "verify_app_image.py").read_text(
+        encoding="utf-8"
+    )
+    assert image_regression.count('"--cap-drop", "ALL"') == 2
+    assert "os.geteuid()}:{os.getegid()}" in image_regression
+
 
 def test_apparmor_is_enforcing_and_denies_config_writes() -> None:
     profile = (APP / "apparmor.txt").read_text(encoding="utf-8")
@@ -154,6 +160,8 @@ def test_launcher_drops_root_privileges_before_runtime(
 ) -> None:
     calls: list[tuple[str, object]] = []
     monkeypatch.setattr("os.geteuid", lambda: 0)
+    monkeypatch.setattr("os.getegid", lambda: 0)
+    monkeypatch.setattr("os.getgroups", lambda: [0])
     monkeypatch.setattr("os.setgroups", lambda groups: calls.append(("groups", groups)))
     monkeypatch.setattr("os.setgid", lambda gid: calls.append(("gid", gid)))
     monkeypatch.setattr("os.setuid", lambda uid: calls.append(("uid", uid)))
@@ -164,6 +172,48 @@ def test_launcher_drops_root_privileges_before_runtime(
     load_launcher()["drop_privileges"]()
 
     assert calls == [("groups", []), ("gid", 999), ("uid", 999)]
+
+
+def test_launcher_accepts_target_identity_without_privileged_calls(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[str, object]] = []
+    monkeypatch.setattr("os.geteuid", lambda: 999)
+    monkeypatch.setattr("os.getegid", lambda: 999)
+    monkeypatch.setattr("os.getgroups", lambda: [999, 123])
+    monkeypatch.setattr("os.setgroups", lambda groups: calls.append(("groups", groups)))
+    monkeypatch.setattr("os.setgid", lambda gid: calls.append(("gid", gid)))
+    monkeypatch.setattr("os.setuid", lambda uid: calls.append(("uid", uid)))
+    monkeypatch.setattr(
+        "pwd.getpwnam", lambda user: SimpleNamespace(pw_uid=999, pw_gid=999)
+    )
+
+    load_launcher()["drop_privileges"]()
+
+    assert calls == []
+
+
+def test_launcher_rejects_unexpected_nonroot_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[str, object]] = []
+    monkeypatch.setattr("os.geteuid", lambda: 1000)
+    monkeypatch.setattr("os.getegid", lambda: 1000)
+    monkeypatch.setattr("os.getgroups", lambda: [1000, 44])
+    monkeypatch.setattr("os.setgroups", lambda groups: calls.append(("groups", groups)))
+    monkeypatch.setattr("os.setgid", lambda gid: calls.append(("gid", gid)))
+    monkeypatch.setattr("os.setuid", lambda uid: calls.append(("uid", uid)))
+    monkeypatch.setattr(
+        "pwd.getpwnam", lambda user: SimpleNamespace(pw_uid=999, pw_gid=999)
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match=r"unexpected runtime identity uid=1000 gid=1000 groups=\[1000, 44\]",
+    ):
+        load_launcher()["drop_privileges"]()
+
+    assert calls == []
 
 
 @pytest.mark.asyncio

@@ -57,10 +57,22 @@ def build_environment(
 
 
 def drop_privileges(user: str = RUNTIME_USER) -> None:
-    """Permanently become the unprivileged runtime account."""
-    if os.geteuid() != 0:
-        return
+    """Permanently become, or confirm, the unprivileged runtime account."""
     account = pwd.getpwnam(user)
+    current_uid = os.geteuid()
+    current_gid = os.getegid()
+    current_groups = os.getgroups()
+
+    if current_uid == account.pw_uid and current_gid == account.pw_gid:
+        return
+
+    if current_uid != 0:
+        raise RuntimeError(
+            "Refusing to start with unexpected runtime identity "
+            f"uid={current_uid} gid={current_gid} groups={current_groups}; "
+            f"expected root or {account.pw_uid}:{account.pw_gid}"
+        )
+
     os.setgroups([])
     os.setgid(account.pw_gid)
     os.setuid(account.pw_uid)
@@ -72,7 +84,11 @@ def main() -> None:
     except RuntimeError as exc:
         print(f"Nara Home startup error: {exc}", file=sys.stderr)
         raise SystemExit(1) from None
-    drop_privileges()
+    try:
+        drop_privileges()
+    except RuntimeError as exc:
+        print(f"Nara Home startup error: {exc}", file=sys.stderr)
+        raise SystemExit(1) from None
     os.execvpe("nara-home-mcp", ["nara-home-mcp"], environment)
 
 

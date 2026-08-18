@@ -88,5 +88,11 @@ jobs:
           cosign: "false"
           image: local/${{ matrix.arch }}-nara-home-mcp
           image-tags: ci
+          load: "true"
           push: "false"
           version: ${{ steps.version.outputs.value }}
+
+      - name: Validate unprivileged read-only runtime
+        run: >-
+          python scripts/verify_app_image.py
+          --image local/${{ matrix.arch }}-nara-home-mcp:ci

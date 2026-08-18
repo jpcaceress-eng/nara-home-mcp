@@ -96,6 +96,7 @@ def validate_workflows() -> None:
     assert "packages: write" not in ci_text
     assert "id-token: write" not in ci_text
     assert "push: \"false\"" in ci_text
+    assert "load: \"true\"" in ci_text
     assert "container-registry-password: unused" in ci_text
     assert "pull_request:" in ci_text and "push:" in ci_text
 

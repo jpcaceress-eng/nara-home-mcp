@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.7 — HAOS runtime permission fix
+
+- Makes the packaged virtual environment explicitly readable and traversable by
+  the unprivileged runtime account while keeping it non-writable.
+- Allows AppArmor read access only to the virtual environment metadata required
+  by Python startup.
+- Adds an image-level regression check for the read-only UID/GID 999 runtime.
+
 ## 0.4.6 — Public snapshot
 
 - Exposes 43 read-only MCP tools.

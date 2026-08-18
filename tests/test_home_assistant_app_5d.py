@@ -88,6 +88,12 @@ def test_dockerfile_is_pinned_nonroot_and_runtime_only() -> None:
     assert "drop_privileges()" in (APP / "run.sh").read_text(encoding="utf-8")
     assert "--only-binary=:all:" in dockerfile
     assert "python3-venv" in dockerfile
+    assert "groupadd --system --gid 999 nara" in dockerfile
+    assert "useradd --system --uid 999 --gid 999" in dockerfile
+    assert "find /opt/nara -type d -exec chmod 0555 {} +" in dockerfile
+    assert "find /opt/nara -type f -exec chmod 0444 {} +" in dockerfile
+    assert "find /opt/nara/bin -type f -exec chmod 0555 {} +" in dockerfile
+    assert "chmod 777" not in dockerfile
     assert "HEALTHCHECK" in dockerfile
     assert "COPY tests" not in dockerfile
     assert "COPY . " not in dockerfile
@@ -99,6 +105,8 @@ def test_apparmor_is_enforcing_and_denies_config_writes() -> None:
     assert "profile nara_home" in profile
     assert "complain" not in profile
     assert "/data/options.json r," in profile
+    assert "/opt/nara/pyvenv.cfg r," in profile
+    assert "/opt/nara/**" not in profile
     assert "/homeassistant_config/** r," in profile
     assert "deny /homeassistant_config/** wklx," in profile
     assert "network inet stream," in profile

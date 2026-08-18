@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nara-home-mcp"
-version = "0.4.7"
+version = "0.4.8"
 description = "Read-only MCP server for Home Assistant operational data"
 readme = "README.md"
 requires-python = ">=3.11"

@@ -94,7 +94,8 @@ def main() -> None:
 
         try:
             readable = docker(
-                "run", "--rm", "--user", "999:999", "--read-only",
+                "run", "--rm", "--user", "999:999", "--cap-drop", "ALL",
+                "--read-only",
                 "--entrypoint", "/opt/nara/bin/python", args.image,
                 "-c", "from pathlib import Path; Path('/opt/nara/pyvenv.cfg').read_text()",
             )
@@ -102,7 +103,7 @@ def main() -> None:
 
             docker(
                 "run", "--detach", "--name", name,
-                "--user", "999:999", "--read-only",
+                "--user", "999:999", "--cap-drop", "ALL", "--read-only",
                 "--tmpfs", "/tmp:rw,noexec,nosuid,size=16m",
                 "--mount", f"type=bind,src={options},dst=/data/options.json,readonly",
                 "--env", f"SUPERVISOR_TOKEN={private_token}",
@@ -122,6 +123,12 @@ def main() -> None:
                 except subprocess.CalledProcessError:
                     time.sleep(1)
             assert health == {"status": "ok", "write_capability": False}
+
+            identity = docker(
+                "exec", name, "/opt/nara/bin/python", "-c",
+                "import os; print(f'{os.geteuid()}:{os.getegid()}')",
+            )
+            assert identity.stdout.strip() == "999:999"
 
             probe = docker(
                 "exec", name, "/opt/nara/bin/python", "-c", RUNTIME_PROBE

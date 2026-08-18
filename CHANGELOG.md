@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.8 — Idempotent HAOS privilege drop
+
+- Accept the already-applied `999:999` runtime identity without privileged
+  syscalls, while retaining the fail-closed root privilege drop.
+
 ## 0.4.7 — HAOS runtime permission fix
 
 - Makes the packaged virtual environment explicitly readable and traversable by

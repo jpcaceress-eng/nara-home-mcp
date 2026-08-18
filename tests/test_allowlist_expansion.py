@@ -1,7 +1,8 @@
 import pytest
+from pathlib import Path
 
 from app.config import EntitiesConfig, Settings
-from app.main import _expand_raw_entity_allowlist
+from app.main import _expand_raw_entity_allowlist, load_runtime_entities
 from app.security import is_sensitive_domain
 
 
@@ -65,3 +66,43 @@ def test_sensitive_domain_helper_matches_expected_domains() -> None:
     assert is_sensitive_domain("camera.front_door")
     assert is_sensitive_domain("automation.night_mode")
     assert not is_sensitive_domain("sensor.temperature")
+
+
+def _settings_for_entities(path: Path) -> Settings:
+    return Settings.model_construct(
+        ha_url="http://ha.example.invalid:8123",
+        ha_token="example-token",
+        entities_file=path,
+    )
+
+
+def test_runtime_entities_missing_config_fails_without_fallback(tmp_path: Path) -> None:
+    settings = _settings_for_entities(tmp_path / "missing.yaml")
+    with pytest.raises(FileNotFoundError):
+        load_runtime_entities(settings)
+
+
+def test_runtime_entities_invalid_config_fails_without_fallback(tmp_path: Path) -> None:
+    configured = tmp_path / "invalid.yaml"
+    configured.write_text("editable_automations:\n  - not-an-automation\n", encoding="utf-8")
+    settings = _settings_for_entities(configured)
+    with pytest.raises(ValueError):
+        load_runtime_entities(settings)
+
+
+def test_runtime_entities_unreadable_config_fails_without_fallback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    configured = tmp_path / "unreadable.yaml"
+    configured.write_text("editable_automations: []\n", encoding="utf-8")
+    settings = _settings_for_entities(configured)
+    original_open = Path.open
+
+    def denied(path: Path, *args: object, **kwargs: object):
+        if path == configured:
+            raise PermissionError("configured entity file is not readable")
+        return original_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", denied)
+    with pytest.raises(PermissionError, match="not readable"):
+        load_runtime_entities(settings)

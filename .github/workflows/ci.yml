@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+    tags-ignore: ["**"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate project
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install project and development dependencies
+        run: python -m pip install --disable-pip-version-check --no-input --editable '.[dev]'
+
+      - name: Run public read-only test suite
+        run: >-
+          python -m pytest -q
+          tests/test_home_assistant_app_5d.py
+          tests/test_mcp_tool_inventory.py
+          tests/test_security.py
+          tests/test_logging_security.py
+          tests/test_payload_anonymization.py
+          tests/test_configuration_files_4b5c.py
+          tests/test_automation_diagnostics_tools.py
+          tests/test_ci_release_5f.py
+
+      - name: Compile Python sources
+        run: python -m compileall -q app scripts tests
+
+      - name: Check release and read-only contracts
+        run: python scripts/verify_release_contract.py --ci
+
+      - name: Check patch whitespace
+        run: git diff --check
+
+  image:
+    name: Validate ${{ matrix.arch }} image
+    needs: validate
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Read App version
+        id: version
+        shell: bash
+        run: |
+          version="$(sed -n 's/^version: "\(.*\)"$/\1/p' nara_home/config.yaml)"
+          test -n "$version"
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Build without publishing
+        uses: home-assistant/builder/actions/build-image@4de35182ce1e329181bffcbcc84d33db5e2c7e10 # 2026.06.0
+        with:
+          arch: ${{ matrix.arch }}
+          cache-gha: "true"
+          cache-gha-scope: nara-home-ci
+          container-registry-password: unused
+          context: nara_home
+          cosign: "false"
+          image: local/${{ matrix.arch }}-nara-home-mcp
+          image-tags: ci
+          push: "false"
+          version: ${{ steps.version.outputs.value }}

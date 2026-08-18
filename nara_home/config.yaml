@@ -1,0 +1,31 @@
+# https://developers.home-assistant.io/docs/apps/configuration/
+name: Nara Home
+version: "0.4.6"
+slug: nara_home
+description: Read-only MCP access to Home Assistant operational data
+stage: experimental
+arch:
+  - amd64
+  - aarch64
+startup: application
+boot: auto
+init: true
+apparmor: true
+host_network: false
+homeassistant_api: true
+hassio_api: false
+docker_api: false
+full_access: false
+map:
+  - type: homeassistant_config
+    read_only: true
+    path: /homeassistant_config
+ports:
+  "8000/tcp": null
+watchdog: http://[HOST]:[PORT:8000]/health
+options:
+  log_level: INFO
+  read_internal_config: false
+schema:
+  log_level: list(INFO|WARNING|ERROR|DEBUG)
+  read_internal_config: bool

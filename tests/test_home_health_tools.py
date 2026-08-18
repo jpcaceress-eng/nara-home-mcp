@@ -137,7 +137,7 @@ async def test_climate_and_home_health_tolerate_missing_sensors() -> None:
 @pytest.mark.asyncio
 async def test_list_allowed_entities_includes_new_sections() -> None:
     mcp = FastMCP(name="Test Nara Home", stateless_http=True, json_response=True)
-    ha = HomeAssistantClient("http://ha.local", "token")
+    ha = HomeAssistantClient("https://home-assistant.example.invalid", "token")
     entities = EntitiesConfig(
         climate={"sample_room": ClimateRoomConfig(temperature="sensor.temp")},
         batteries={"sample_sensor": "sensor.battery"},

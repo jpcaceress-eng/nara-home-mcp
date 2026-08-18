@@ -1,0 +1,10 @@
+rooms: {}
+climate: {}
+batteries: {}
+lights: {}
+displays: {}
+scenes: {}
+infra: {}
+ups: {}
+allowed_raw_entities: []
+editable_automations: []

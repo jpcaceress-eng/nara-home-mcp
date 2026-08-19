@@ -84,14 +84,7 @@ def main() -> None:
     name = f"nara-image-regression-{secrets.token_hex(6)}"
     private_token = f"fixture-private-token-{secrets.token_hex(16)}"
 
-    with tempfile.TemporaryDirectory(prefix="nara-image-regression-") as directory:
-        options = Path(directory) / "options.json"
-        options.write_text(
-            json.dumps({"log_level": "INFO", "read_internal_config": False}),
-            encoding="utf-8",
-        )
-        options.chmod(0o444)
-
+    with tempfile.TemporaryDirectory(prefix="nara-image-regression-"):
         try:
             readable = docker(
                 "run", "--rm", "--cap-drop", "ALL",
@@ -105,7 +98,6 @@ def main() -> None:
                 "run", "--detach", "--name", name,
                 "--cap-drop", "ALL", "--read-only",
                 "--tmpfs", "/tmp:rw,noexec,nosuid,size=16m",
-                "--mount", f"type=bind,src={options},dst=/data/options.json,readonly",
                 "--env", f"SUPERVISOR_TOKEN={private_token}",
                 args.image,
             )

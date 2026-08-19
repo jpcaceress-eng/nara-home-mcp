@@ -1,9 +1,3 @@
-configuration:
-  log_level:
-    name: Nivel de registro
-    description: Detalle escrito en el registro de la App. Las credenciales nunca se registran.
-  read_internal_config:
-    name: Leer archivos internos de configuración
-    description: Permite acceso de solo lectura a archivos de texto admitidos del directorio de configuración montado de Home Assistant.
+configuration: {}
 network:
   8000/tcp: Endpoint MCP y de salud interno; desactivado en el host.

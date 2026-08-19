@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.9 — Native unprivileged HAOS runtime
+
+- Starts the protected App directly as UID/GID `999:999`, avoiding unavailable
+  runtime `SETUID` and `SETGID` capabilities.
+- Disables the redundant Docker init wrapper for the S6-based App image.
+- Fails closed if the container starts with any unexpected runtime identity.
+
 ## 0.4.8 — Idempotent HAOS privilege drop
 
 - Accept the already-applied `999:999` runtime identity without privileged

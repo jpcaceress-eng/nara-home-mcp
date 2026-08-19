@@ -108,6 +108,7 @@ def test_apparmor_is_enforcing_and_denies_config_writes() -> None:
     assert "complain" not in profile
     assert "/data/options.json" not in profile
     assert "/opt/nara/pyvenv.cfg r," in profile
+    assert "/opt/nara/lib/python3.13/** rm," in profile
     assert "/opt/nara/**" not in profile
     assert "/homeassistant_config/** r," in profile
     assert "deny /homeassistant_config/** wklx," in profile

@@ -20,7 +20,9 @@ profile nara_home flags=(attach_disconnected,mediate_deleted) {
   /opt/nara/bin/python3 rix,
   /opt/nara/bin/python3.13 rix,
   /opt/nara/pyvenv.cfg r,
-  /opt/nara/lib/python3.13/** r,
+  # Native Python extension modules require executable memory mapping, while
+  # the image filesystem and Unix modes keep the virtualenv non-writable.
+  /opt/nara/lib/python3.13/** rm,
   /usr/local/share/nara-home/** r,
   /usr/lib/** rm,
   /lib/** rm,

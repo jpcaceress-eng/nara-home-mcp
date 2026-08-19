@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.11 — AppArmor native-extension mapping
+
+- Allows read and executable memory mapping for native Python extension modules
+  inside the immutable virtual environment.
+- Keeps the virtual environment non-writable and preserves all other AppArmor,
+  capability, network, and read-only restrictions.
+
 ## 0.4.10 — Fixed nonroot runtime configuration
 
 - Removes the root-owned App options file from the unprivileged startup path.

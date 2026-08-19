@@ -1,9 +1,3 @@
-configuration:
-  log_level:
-    name: Log level
-    description: Logging detail written to the App log. Credentials are never logged.
-  read_internal_config:
-    name: Read internal configuration files
-    description: Allow read-only access to eligible text files in the mounted Home Assistant configuration directory.
+configuration: {}
 network:
   8000/tcp: Internal MCP and health endpoint; disabled on the host.

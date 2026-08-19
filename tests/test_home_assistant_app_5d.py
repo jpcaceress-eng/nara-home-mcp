@@ -48,14 +48,8 @@ def test_repository_and_app_metadata_are_minimal_and_protected() -> None:
             "path": "/homeassistant_config",
         }
     ]
-    assert config["options"] == {
-        "log_level": "INFO",
-        "read_internal_config": False,
-    }
-    assert config["schema"] == {
-        "log_level": "list(INFO|WARNING|ERROR|DEBUG)",
-        "read_internal_config": "bool",
-    }
+    assert "options" not in config
+    assert "schema" not in config
     assert not (APP / "build.yaml").exists()
     forbidden = {
         "auth_api", "devices", "gpio", "hassio_role", "host_dbus", "host_ipc",
@@ -71,10 +65,8 @@ def test_translations_cover_exactly_the_options_and_disabled_port() -> None:
         translation = yaml.safe_load(
             (APP / "translations" / f"{language}.yaml").read_text(encoding="utf-8")
         )
-        assert set(translation["configuration"]) == set(config["schema"])
+        assert translation["configuration"] == {}
         assert set(translation["network"]) == {"8000/tcp"}
-        for option in translation["configuration"].values():
-            assert set(option) == {"name", "description"}
 
 
 def test_dockerfile_is_pinned_nonroot_and_runtime_only() -> None:
@@ -114,7 +106,7 @@ def test_apparmor_is_enforcing_and_denies_config_writes() -> None:
     profile = (APP / "apparmor.txt").read_text(encoding="utf-8")
     assert "profile nara_home" in profile
     assert "complain" not in profile
-    assert "/data/options.json r," in profile
+    assert "/data/options.json" not in profile
     assert "/opt/nara/pyvenv.cfg r," in profile
     assert "/opt/nara/**" not in profile
     assert "/homeassistant_config/** r," in profile
@@ -123,15 +115,9 @@ def test_apparmor_is_enforcing_and_denies_config_writes() -> None:
     assert "network raw" not in profile
 
 
-def test_launcher_uses_only_supervisor_token_and_fixed_proxy_paths(tmp_path: Path) -> None:
-    options = tmp_path / "options.json"
-    options.write_text(
-        json.dumps({"log_level": "WARNING", "read_internal_config": False}),
-        encoding="utf-8",
-    )
+def test_launcher_uses_only_supervisor_token_and_fixed_safe_settings() -> None:
     build_environment = load_launcher()["build_environment"]
     environment = build_environment(
-        options,
         {"SUPERVISOR_TOKEN": "fixture-supervisor-token", "UNRELATED": "kept"},
     )
 
@@ -141,22 +127,13 @@ def test_launcher_uses_only_supervisor_token_and_fixed_proxy_paths(tmp_path: Pat
     assert environment["HA_CONFIG_ROOT"] == "/homeassistant_config"
     assert environment["HA_CONFIG_READ_ENABLED"] == "false"
     assert environment["HA_CONFIG_REQUIRE_READ_ONLY_MOUNT"] == "true"
+    assert environment["LOG_LEVEL"] == "INFO"
     assert "SUPERVISOR_TOKEN" not in environment
-    assert "fixture-supervisor-token" not in options.read_text(encoding="utf-8")
-
-    options.write_text(
-        json.dumps({"log_level": "INFO", "read_internal_config": True}),
-        encoding="utf-8",
-    )
-    enabled = build_environment(options, {"SUPERVISOR_TOKEN": "fixture-token"})
-    assert enabled["HA_CONFIG_READ_ENABLED"] == "true"
 
 
-def test_launcher_fails_closed_without_supervisor_token(tmp_path: Path) -> None:
-    options = tmp_path / "options.json"
-    options.write_text("{}", encoding="utf-8")
+def test_launcher_fails_closed_without_supervisor_token() -> None:
     with pytest.raises(RuntimeError, match="SUPERVISOR_TOKEN is required"):
-        load_launcher()["build_environment"](options, {})
+        load_launcher()["build_environment"]({})
 
 
 def test_launcher_accepts_target_identity_without_privileged_calls(

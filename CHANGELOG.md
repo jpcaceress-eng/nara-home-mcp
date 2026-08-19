@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.10 — Fixed nonroot runtime configuration
+
+- Removes the root-owned App options file from the unprivileged startup path.
+- Uses fixed safe runtime defaults: INFO logging and internal configuration reads disabled.
+- Keeps Supervisor API access disabled and the runtime fixed at UID/GID `999:999`.
+
 ## 0.4.9 — Native unprivileged HAOS runtime
 
 - Starts the protected App directly as UID/GID `999:999`, avoiding unavailable

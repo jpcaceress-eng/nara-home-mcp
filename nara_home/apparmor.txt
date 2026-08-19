@@ -23,7 +23,7 @@ profile nara_home flags=(attach_disconnected,mediate_deleted) {
   # Native Python extension modules require executable memory mapping, while
   # the image filesystem and Unix modes keep the virtualenv non-writable.
   /opt/nara/lib/python3.13/** rm,
-  /usr/local/share/nara-home/** r,
+  /usr/local/share/nara-home-entities.yaml r,
   /usr/lib/** rm,
   /lib/** rm,
   /lib64/** rm,

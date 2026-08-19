@@ -110,6 +110,7 @@ def test_apparmor_is_enforcing_and_denies_config_writes() -> None:
     assert "/opt/nara/pyvenv.cfg r," in profile
     assert "/opt/nara/lib/python3.13/** rm," in profile
     assert "/opt/nara/**" not in profile
+    assert "/usr/local/share/nara-home-entities.yaml r," in profile
     assert "/homeassistant_config/** r," in profile
     assert "deny /homeassistant_config/** wklx," in profile
     assert "network inet stream," in profile

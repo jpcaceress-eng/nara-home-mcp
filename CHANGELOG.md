@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.12 — AppArmor entity manifest path
+
+- Allows read access to the exact packaged entity manifest path used at runtime.
+- Does not broaden access to other files under `/usr/local/share`.
+
 ## 0.4.11 — AppArmor native-extension mapping
 
 - Allows read and executable memory mapping for native Python extension modules
